@@ -1,240 +1,48 @@
 # SkiEazy - Mural Payment Integration Demo
 
-A complete e-commerce demo application showcasing the Mural API for accepting USDC payments and automatically withdrawing to Colombian Pesos (COP).
+A merchant checkout application demonstrating the Mural API for accepting USDC payments on Polygon and converting to Colombian Pesos (COP) for bank withdrawal.
 
-## Workflow Overview
 
-This implementation covers the complete payment and withdrawal workflow:
+## Current Project Status
 
-### 1. Product Checkout & Payment Collection
+> **Note**: This project was developed within a 3-hour time constraint. Below is the current state and what remains incomplete.
 
-**Display Product Catalog**
-- React frontend displays a product catalog with ski and snowboard equipment
-- Products are fetched from the Express backend (`GET /products`)
-- Customers can filter by product type (Skis, Snowboards, All)
+### Completed Features
 
-**Shopping Cart & Checkout**
-- Customers add items to cart with quantity controls
-- Slide-out cart shows item summary and total in USDC
-- Checkout creates an order in the backend (`POST /orders`)
+| Requirement | Status | Notes |
+|-------------|--------|-------|
+| Display product catalog | Complete | React frontend with ski/snowboard products, filtering by type |
+| Select items and initiate checkout | Complete | Shopping cart with quantity controls, checkout flow |
+| Accept USDC on Polygon | Partial | Transfer API integrated but authentication issues remain |
+| Detect payment receipt | Not Complete | Webhook handler was built but removed during simplification |
+| Display payment status | Partial | Receipt page exists but depends on successful transfer |
+| Auto-convert to COP | Not Complete | Fiat payout types defined but not implemented |
+| Merchant withdrawal dashboard | Not Complete | Not implemented |
 
-**Payment via USDC on Polygon**
-- Order creation returns a Mural wallet address for payment
-- Customer sends USDC to the provided wallet address on Polygon network
-- Payment page displays wallet address and monitors for payment confirmation
+### What Works
 
-### 2. Payment Receipt & Verification
+1. **Product Catalog** - Browse ski and snowboard equipment with category filters
+2. **Shopping Cart** - Add/remove items, adjust quantities, view totals in USDC
+3. **Checkout Flow** - Cart → Checkout page → Payment initiation
+4. **Mural API Client** - Full TypeScript client with:
+   - Account creation
+   - Payout creation and execution
+   - Proper header handling (`Authorization`, `on-behalf-of`, `transfer-api-key`)
 
-**Detect Payment Receipt**
-- Mural sends webhook events to `POST /webhooks/mural`
-- Backend listens for `mural_account_balance_activity` events with `DEPOSIT` type
-- When payment is detected, order status updates to `paid`
+### What's Not Working
 
-**Display Payment Status**
-- Frontend polls order status (`GET /orders/:id`)
-- Payment confirmation shown to customer with order details
-- Receipt page displays transaction summary
+1. **401 Unauthorized on Payout Creation** - Despite correct API key configuration, the Mural API returns 401 errors when creating payouts. This blocked the entire payment flow.
 
-### 3. Automatic Fund Conversion & Withdrawal
+2. **COP Conversion** - The fiat payout types (COP bank details) were defined in the codebase but the automatic conversion flow was never completed due to the 401 blocker.
 
-**Auto-Initiate COP Payout**
-- When payment webhook is received, backend automatically creates a payout request
-- Payout is sent to a pre-configured Colombian bank account
-- Uses Mural's `POST /payouts/payout-request` endpoint
+### Root Cause of Blockers
 
-**Merchant Withdrawal Status**
-- Merchant dashboard shows all payout history (`GET /payouts`)
-- Displays payout status: `PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`
-- Shows amount, recipient, and timestamp for each withdrawal
+The primary blocker was **API authentication**. The Mural API requires:
+- `Authorization: Bearer <API_KEY>` for all requests
+- `transfer-api-key: <TRANSFER_API_KEY>` header for execute/cancel operations
+- `on-behalf-of: <ORGANIZATION_ID>` header
 
----
-
-## Architecture
-
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  React Frontend │────▶│  Express Backend │────▶│    Mural API    │
-│  (Port 3000)    │     │  (Port 8001)     │     │                 │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                               │
-                               ▼
-                        ┌─────────────────┐
-                        │  Mural Webhooks │
-                        │  (Payment Events)│
-                        └─────────────────┘
-```
-
----
-
-## Project Structure
-
-```
-muralPay/
-├── muralpay-react/          # React Frontend
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── ProductCatalog.js   # Product listing with filters
-│   │   │   ├── Cart.js             # Shopping cart component
-│   │   │   ├── Checkout.js         # Order creation
-│   │   │   ├── PaymentPage.js      # Payment instructions & status
-│   │   │   ├── PaymentReceipt.js   # Order confirmation
-│   │   │   └── WithdrawalStatus.js # Merchant payout dashboard
-│   │   ├── api.js                  # API client
-│   │   └── App.js                  # Main app with routing
-│   └── package.json
-│
-├── muralpay-api2/           # Express Backend
-│   ├── src/
-│   │   ├── clients/
-│   │   │   └── MuralClient.ts      # Mural API wrapper
-│   │   ├── routes/
-│   │   │   ├── products.ts         # Product catalog
-│   │   │   ├── orders.ts           # Order management
-│   │   │   ├── payouts.ts          # Payout management
-│   │   │   └── webhooks.ts         # Mural webhook handler
-│   │   ├── data/
-│   │   │   └── products.json       # Product data
-│   │   └── index.ts                # Express server
-│   └── package.json
-│
-└── README.md
-```
-
----
-
-## Setup Instructions
-
-### Prerequisites
-
-- Node.js 18+
-- Mural API Key (from Mural Dashboard)
-- Mural Organization ID
-- Mural Account ID (with USDC wallet on Polygon)
-
-### 1. Backend Setup
-
-```bash
-cd muralpay-api2
-
-# Install dependencies
-npm install
-
-# Create .env file
-cp .env.example .env
-
-# Edit .env with your credentials:
-# MURAL_API_KEY=your_api_key
-# MURAL_ORGANIZATION_ID=your_org_id
-# MURAL_ACCOUNT_ID=your_account_id
-
-# Start the server
-npm run dev
-```
-
-Backend runs on http://localhost:8001
-
-### 2. Frontend Setup
-
-```bash
-cd muralpay-react
-
-# Install dependencies
-npm install
-
-# Start the development server
-npm start
-```
-
-Frontend runs on http://localhost:3000
-
----
-
-## API Endpoints
-
-### Products
-- `GET /products` - List all products
-
-### Orders
-- `POST /orders` - Create a new order
-- `GET /orders/:id` - Get order status
-- `GET /orders` - List all orders
-
-### Payouts
-- `GET /payouts` - List all payouts
-- `GET /payouts/:id` - Get payout status
-- `POST /payouts` - Create manual payout
-
-### Webhooks
-- `POST /webhooks/mural` - Receive Mural webhook events
-- `POST /webhooks/simulate-payment` - Simulate payment (demo only)
-
----
-
-## Mural API Integration
-
-### Key Endpoints Used
-
-| Feature | Mural Endpoint |
-|---------|----------------|
-| Get wallet address | `GET /accounts/{id}` |
-| Create payout | `POST /payouts/payout-request` |
-| List transactions | `GET /accounts/{id}/transactions` |
-| Webhook events | `mural_account_balance_activity` |
-
-### Webhook Events
-
-The backend listens for these Mural webhook events:
-
-1. **`mural_account_balance_activity`** - Triggered when funds are deposited
-   - Used to detect customer payments
-   - Automatically triggers COP payout
-
-2. **`payout_request`** - Triggered when payout status changes
-   - Used to update merchant on withdrawal status
-
----
-
-## Demo Flow
-
-1. **Browse Products** - View ski and snowboard catalog
-2. **Add to Cart** - Select items and quantities
-3. **Checkout** - Create order and get payment instructions
-4. **Pay with USDC** - Send USDC to the provided Polygon wallet
-5. **Payment Confirmed** - Webhook detects payment, updates order
-6. **Auto Withdrawal** - System automatically initiates COP payout
-7. **View Status** - Merchant sees withdrawal status in dashboard
-
----
-
-## Configuration
-
-### Environment Variables
-
-**Backend (.env)**
-```
-MURAL_API_KEY=your_mural_api_key
-MURAL_ORGANIZATION_ID=your_organization_id
-MURAL_ACCOUNT_ID=your_account_id
-PORT=8001
-```
-
-**Frontend (.env)**
-```
-REACT_APP_ORGANIZATION_ID=your_organization_id
-REACT_APP_ACCOUNT_ID=your_account_id
-```
-
----
-
-## Technologies Used
-
-- **Frontend**: React 19, Tailwind CSS
-- **Backend**: Express.js, TypeScript
-- **Payment**: Mural API, USDC on Polygon
-- **Payout**: Colombian Pesos (COP) bank transfer
-
----
-
-## License
-
-MIT
+Despite implementing all headers correctly (verified via console logs), the API consistently returned 401 Unauthorized. Possible causes:
+- API key permissions not configured for payout operations
+- Organization ID mismatch
+- Sandbox environment restrictions
