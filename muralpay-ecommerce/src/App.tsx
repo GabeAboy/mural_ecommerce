@@ -8,7 +8,7 @@ import { getProducts, createTransfer } from './api';
 type View = 'catalog' | 'checkout' | 'receipt';
 
 const ACCOUNT_ID = process.env.REACT_APP_ACCOUNT_ID || '';
-const RECIPIENT_WALLET = process.env.REACT_APP_WALLET_ADDRESS || '';
+const RECIPIENT_WALLET = process.env.REACT_APP_WALLET_ADDRESS || '0xf116752a4424a321a1B89773e375b5C6dd4f0DeF';
 
 function App() {
   const [view, setView] = useState<View>('catalog');
